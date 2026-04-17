@@ -231,8 +231,8 @@ class PMU():
             if not seqdata.hdr.id.startswith(b'PMU'):
                 continue
             is_learning_phase = seqdata.hdr.id.startswith(b'PMULearnPhase')
-            if syngo_version is not None and syngo_version.startswith('XA'):
-                if int(syngo_version[2:])>= 61:
+            if syngo_version is not None and (syngo_version.startswith('XA') or syngo_version.startswith('XB')):
+                if int(syngo_version[2:])>= 61 or syngo_version.startswith('XB'):
                     block = PMUblockVA61(seqdata.data, self.unknown_pmu_magic)
                 else:
                     block = PMUblockVA(seqdata.data, self.unknown_pmu_magic)
