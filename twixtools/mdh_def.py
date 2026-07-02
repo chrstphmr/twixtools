@@ -1,3 +1,6 @@
+import struct
+from collections import namedtuple
+
 import numpy as np
 import ctypes
 
@@ -306,7 +309,9 @@ def get_flags(mdh):
 
 
 def get_active_flags(mdh):
-    return [key for key, item in get_flags(mdh).items() if item]
+    """Return list of active flag names."""
+    mask = int(mdh.EvalInfoMask)
+    return [mask_id[i] for i in range(64) if mask & (1 << i)]
 
 
 def set_flags(mdh, flags):
@@ -336,3 +341,23 @@ def is_image_scan(mdh):
             and not is_flag_set(mdh, 'PATREFANDIMASCAN'):
         return False
     return True
+
+
+MdbFields = namedtuple('MdbFields',
+    'eval_mask scan_counter timestamp pmu_timestamp samples channels counters')
+
+def get_fields(mdh) -> MdbFields:
+    """Batch-read all MDH fields via struct.unpack (faster than attr access).
+    Works with VB17_header and Scan_header (VD/VE).
+
+    Raises TypeError for unsupported MDH header types.
+    """
+    raw = bytes(mdh)
+    if isinstance(mdh, Scan_header):
+        v = struct.unpack_from('<IIIHHIIIIQHH14H', raw, 8)
+        return MdbFields(v[9], v[0], v[1], v[2], v[10], v[11], v[12:])
+    elif isinstance(mdh, VB17_header):
+        v = struct.unpack_from('<IIIQHH14H', raw, 8)
+        return MdbFields(v[3], v[0], v[1], v[2], v[4], v[5], v[6:])
+    else:
+        raise TypeError(f'{type(mdh)} is unsupported; expected VB17_header or Scan_header.')
